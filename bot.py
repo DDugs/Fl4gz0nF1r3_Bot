@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import json
 import aiohttp
+import os
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -251,4 +252,4 @@ async def reset(interaction: discord.Interaction):
 async def details(interaction: discord.Interaction):
     await interaction.response.send_modal(CTFDetailsModal(interaction.channel))
 
-bot.run("enter your bot token")
+bot.run(os.environ["BOT_TOKEN"])
