@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Export Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #36393f;
+            color: #dcddde;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: #2f3136;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #202225;
+        }
+
+        .server-name {
+            padding: 16px;
+            font-weight: 600;
+            font-size: 16px;
+            border-bottom: 1px solid #202225;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .channels {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .channel {
+            padding: 8px 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #96989d;
+            font-size: 15px;
+            transition: all 0.15s;
+        }
+
+        .channel:hover {
+            background-color: #3c3f45;
+            color: #dcddde;
+        }
+
+        .channel.active {
+            background-color: #404249;
+            color: #fff;
+        }
+
+        .channel::before {
+            content: '# ';
+            color: #72767d;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #36393f;
+        }
+
+        .chat-header {
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #202225;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .chat-header::before {
+            content: '# ';
+            color: #72767d;
+            font-weight: 600;
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .chat-header span {
+            font-weight: 600;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 2px 16px 2px 72px;
+            position: relative;
+            min-height: 44px;
+        }
+
+        .message:hover {
+            background-color: #32353b;
+        }
+
+        .avatar {
+            position: absolute;
+            left: 16px;
+            top: 2px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5865f2, #7289da);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .author {
+            font-weight: 600;
+            font-size: 16px;
+            color: #fff;
+            margin-right: 8px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #72767d;
+            font-weight: 400;
+        }
+
+        .message-content {
+            color: #dcddde;
+            font-size: 15px;
+            line-height: 1.375;
+            word-wrap: break-word;
+        }
+
+        .code-block {
+            background-color: #2f3136;
+            border: 1px solid #202225;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 8px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .attachment {
+            margin: 8px 0;
+            max-width: 400px;
+        }
+
+        .attachment img {
+            max-width: 100%;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .attachment-file {
+            background-color: #2f3136;
+            border: 1px solid #202225;
+            border-radius: 4px;
+            padding: 12px;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .attachment-file:hover {
+            background-color: #3c3f45;
+        }
+
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            background-color: #5865f2;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .upload-area {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .upload-box {
+            border: 2px dashed #4e5058;
+            border-radius: 8px;
+            padding: 60px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            border-color: #5865f2;
+            background-color: #2f3136;
+        }
+
+        .upload-box h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .upload-box p {
+            color: #96989d;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: #2e3136;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #202225;
+            border-radius: 8px;
+            border: 4px solid #2e3136;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #18191c;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #96989d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <h2>📁 Upload Discord Export</h2>
+                <p>Click to select a ZIP file or drag and drop</p>
+                <p style="margin-top: 8px; font-size: 12px;">The ZIP should contain channel folders with JSON files and attachments</p>
+            </div>
+            <input type="file" id="fileInput" accept=".zip" onchange="handleFileUpload(event)">
+            <div class="loading" id="loading">Loading export data...</div>
+        </div>
+
+        <div class="sidebar" id="sidebar" style="display: none;">
+            <div class="server-name" id="serverName">Exported Category</div>
+            <div class="channels" id="channelList"></div>
+        </div>
+
+        <div class="chat-area" id="chatArea" style="display: none;">
+            <div class="chat-header">
+                <span id="currentChannel">Select a channel</span>
+            </div>
+            <div class="messages" id="messages"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        let exportData = {};
+        let currentChannelName = null;
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const zip = await JSZip.loadAsync(file);
+                exportData = {};
+
+                // Extract category name from zip (it's the root folder)
+                const categoryName = file.name.replace('.zip', '').replace('_export', '');
+                document.getElementById('serverName').textContent = categoryName;
+
+                // Parse the structure
+                for (const [path, zipEntry] of Object.entries(zip.files)) {
+                    if (zipEntry.dir) continue;
+
+                    const parts = path.split('/');
+                    if (parts.length < 2) continue;
+
+                    const channelName = parts[0];
+                    
+                    if (!exportData[channelName]) {
+                        exportData[channelName] = {
+                            messages: [],
+                            attachments: {}
+                        };
+                    }
+
+                    // Load JSON file
+                    if (path.endsWith('.json')) {
+                        const content = await zipEntry.async('text');
+                        exportData[channelName].messages = JSON.parse(content);
+                    }
+                    // Load attachments
+                    else if (path.includes('/images/') || path.includes('/txt/')) {
+                        const filename = parts[parts.length - 1];
+                        const blob = await zipEntry.async('blob');
+                        const url = URL.createObjectURL(blob);
+                        exportData[channelName].attachments[filename] = url;
+                    }
+                }
+
+                displayChannels();
+                document.getElementById('uploadArea').style.display = 'none';
+                document.getElementById('sidebar').style.display = 'flex';
+                document.getElementById('chatArea').style.display = 'flex';
+                document.getElementById('loading').style.display = 'none';
+
+            } catch (error) {
+                alert('Error loading ZIP file: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayChannels() {
+            const channelList = document.getElementById('channelList');
+            channelList.innerHTML = '';
+
+            Object.keys(exportData).sort().forEach(channelName => {
+                const div = document.createElement('div');
+                div.className = 'channel';
+                div.textContent = channelName.replace(/_/g, '-');
+                div.onclick = () => loadChannel(channelName);
+                channelList.appendChild(div);
+            });
+
+            // Auto-load first channel
+            const firstChannel = Object.keys(exportData)[0];
+            if (firstChannel) {
+                loadChannel(firstChannel);
+            }
+        }
+
+        function loadChannel(channelName) {
+            currentChannelName = channelName;
+            
+            // Update active state
+            document.querySelectorAll('.channel').forEach(el => {
+                el.classList.remove('active');
+                if (el.textContent.replace('# ', '') === channelName.replace(/_/g, '-')) {
+                    el.classList.add('active');
+                }
+            });
+
+            document.getElementById('currentChannel').textContent = channelName.replace(/_/g, '-');
+            displayMessages(exportData[channelName]);
+        }
+
+        function displayMessages(channelData) {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+
+            channelData.messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.textContent = msg.author.charAt(0).toUpperCase();
+
+                const header = document.createElement('div');
+                header.className = 'message-header';
+
+                const authorSpan = document.createElement('span');
+                authorSpan.className = 'author';
+                authorSpan.textContent = msg.author;
+
+                const timestamp = document.createElement('span');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = formatTimestamp(msg.id);
+
+                header.appendChild(authorSpan);
+                header.appendChild(timestamp);
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                
+                // Parse content for code blocks
+                if (msg.content) {
+                    content.innerHTML = parseMessageContent(msg.content);
+                }
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(header);
+                messageDiv.appendChild(content);
+
+                // Add attachments
+                if (msg.attachments && msg.attachments.length > 0) {
+                    msg.attachments.forEach(attPath => {
+                        const filename = attPath.split('/').pop();
+                        const url = channelData.attachments[filename];
+                        
+                        if (url) {
+                            const attDiv = document.createElement('div');
+                            attDiv.className = 'attachment';
+
+                            if (attPath.includes('images/')) {
+                                const img = document.createElement('img');
+                                img.src = url;
+                                img.onclick = () => window.open(url, '_blank');
+                                attDiv.appendChild(img);
+                            } else {
+                                const fileDiv = document.createElement('div');
+                                fileDiv.className = 'attachment-file';
+                                fileDiv.onclick = () => downloadFile(url, filename);
+                                
+                                const icon = document.createElement('div');
+                                icon.className = 'file-icon';
+                                icon.textContent = '📄';
+                                
+                                const name = document.createElement('span');
+                                name.textContent = filename;
+                                
+                                fileDiv.appendChild(icon);
+                                fileDiv.appendChild(name);
+                                attDiv.appendChild(fileDiv);
+                            }
+
+                            messageDiv.appendChild(attDiv);
+                        }
+                    });
+                }
+
+                messagesDiv.appendChild(messageDiv);
+            });
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function parseMessageContent(content) {
+            // Handle code blocks
+            content = content.replace(/```([\s\S]*?)```/g, '<div class="code-block">$1</div>');
+            // Handle inline code
+            content = content.replace(/`([^`]+)`/g, '<code style="background:#2f3136;padding:2px 4px;border-radius:3px;">$1</code>');
+            // Preserve line breaks
+            content = content.replace(/\n/g, '<br>');
+            return content;
+        }
+
+        function formatTimestamp(snowflake) {
+            const timestamp = Number((BigInt(snowflake) >> 22n) + 1420070400000n);
+            const date = new Date(timestamp);
+            const today = new Date();
+            
+            if (date.toDateString() === today.toDateString()) {
+                return 'Today at ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + 
+                       ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+
+        function downloadFile(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+        }
+
+        // Drag and drop support
+        const uploadBox = document.querySelector('.upload-box');
+        
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.style.borderColor = '#5865f2';
+            uploadBox.style.backgroundColor = '#2f3136';
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.style.borderColor = '#4e5058';
+            uploadBox.style.backgroundColor = '';
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.style.borderColor = '#4e5058';
+            uploadBox.style.backgroundColor = '';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.zip')) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                handleFileUpload({ target: { files: [file] } });
+            }
+        });
+    </script>
+</body>
+</html>
